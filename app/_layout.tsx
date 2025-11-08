@@ -1,32 +1,65 @@
 import '@/global.css';
+import { Platform } from 'react-native';
 
+import { api } from '@/convex/_generated/api';
 import { NAV_THEME } from '@/lib/theme';
+import { ConvexAuthProvider } from '@convex-dev/auth/react';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexReactClient, useQuery } from "convex/react";
 import { Stack } from 'expo-router';
+import * as SecureStore from "expo-secure-store";
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
+import { ActivityIndicator, View } from 'react-native';
+
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
 });
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary
-} from 'expo-router';
+const secureStorage = {
+  getItem: SecureStore.getItemAsync,
+  setItem: SecureStore.setItemAsync,
+  removeItem: SecureStore.deleteItemAsync,
+};
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
 
   return (
-    <ConvexProvider client={convex}>
+    <ConvexAuthProvider client={convex} storage={Platform.OS === 'web' ? undefined : secureStorage}>
       <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack />
-        <PortalHost />
+        <RootNavigator />
       </ThemeProvider>
-    </ConvexProvider>
+    </ConvexAuthProvider>
+  );
+}
+
+function RootNavigator() {
+  const { colorScheme } = useColorScheme();
+  const isAuthenticated = useQuery(api.auth.isAuthenticated);
+
+  if (isAuthenticated === undefined) {
+    return (
+      <View className='flex-1 justify-center items-center'>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={!!isAuthenticated}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!isAuthenticated}>
+          <Stack.Screen name="sign-in" />
+        </Stack.Protected>
+      </Stack>
+      <PortalHost />
+    </>
   );
 }
