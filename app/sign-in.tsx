@@ -7,17 +7,14 @@ import { api } from "@/convex/_generated/api";
 import { THEME } from '@/lib/theme';
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
+import { makeRedirectUri } from "expo-auth-session";
 import { Link, Redirect } from 'expo-router';
+import { openAuthSessionAsync } from "expo-web-browser";
 import { Github } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { makeRedirectUri } from "expo-auth-session";
-import { openAuthSessionAsync } from "expo-web-browser";
-
-const redirectTo = makeRedirectUri();
-
 
 export default function SignInScreen() {
     const { colorScheme } = useColorScheme();
@@ -35,15 +32,42 @@ export default function SignInScreen() {
     });
 
     const handleSignInGithub = async () => {
-        const { redirect } = await signIn("github", { redirectTo });
-        if (Platform.OS === "web") {
-            return;
-        }
-        const result = await openAuthSessionAsync(redirect!.toString(), redirectTo);
-        if (result.type === "success") {
-            const { url } = result;
-            const code = new URL(url).searchParams.get("code")!;
-            await signIn("github", { code });
+        try {
+            // For Expo Go, use the dynamic IP-based redirect
+            const redirectUri = makeRedirectUri({
+                scheme: 'rn-learn'
+            });
+
+            console.log('Redirect URI:', redirectUri);
+
+            // Get the GitHub OAuth URL from Convex
+            const result = await signIn("github", { redirectTo: redirectUri });
+
+            if (Platform.OS === "web") {
+                // On web, the redirect happens automatically
+                return;
+            }
+
+            // For Expo Go on iOS/Android
+            if (result?.redirect) {
+                const authResult = await openAuthSessionAsync(
+                    result.redirect.toString(),
+                    redirectUri
+                );
+
+                if (authResult.type === "success") {
+                    const { url } = authResult;
+                    const code = new URL(url).searchParams.get("code");
+
+                    if (code) {
+                        // Complete the OAuth flow with the code
+                        await signIn("github", { code });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("GitHub sign-in error:", error);
+            Alert.alert("Error", "Failed to sign in with GitHub");
         }
     };
 
@@ -226,7 +250,7 @@ export default function SignInScreen() {
                     </Text>
                 </View>
             </Card>
-            <View className='mt-8'>
+            <View className='mt-8 flex-row gap-4'>
                 <Button variant="outline" onPress={handleSignInGithub}>
                     <Text>Github</Text>
                     <Icon as={Github} />

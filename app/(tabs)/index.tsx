@@ -1,5 +1,6 @@
 import { TaskForm } from '@/components/task-form';
 import { TaskFormUpdate } from '@/components/task-update';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -7,7 +8,7 @@ import { Text } from '@/components/ui/text';
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { MoonStarIcon, SunIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
@@ -21,9 +22,8 @@ const SCREEN_OPTIONS = {
 
 export default function HomeScreen() {
   const tasks = useQuery(api.tasks.getTasks);
-  const taskWithId = useQuery(api.tasks.getTaskById, {
-    id: "j57dkdsc6taq87fv7vyxe556qn7tyy91" as Id<"tasks">
-  });
+  const allUsers = useQuery(api.users.getAllUsers);
+
 
   const deleteTaskById = useMutation(api.tasks.deleteTaskById);
 
@@ -42,21 +42,23 @@ export default function HomeScreen() {
         <View className="items-center justify-center gap-8 p-4">
           <TaskForm />
 
-          {/* Single task by ID */}
-          {taskWithId && (
-            <Card key={taskWithId._id} className="w-full">
-              <CardContent>
-                <CardHeader>
-                  <Text>Single Task: {taskWithId._id}</Text>
-                </CardHeader>
-                <CardDescription>
-                  <Text variant="h3">{taskWithId.text}</Text>
-                  <Text>Completed: {taskWithId.isCompleted ? 'Yes' : 'No'}</Text>
-                </CardDescription>
-              </CardContent>
-            </Card>
-          )}
-
+          {
+            allUsers?.map(user => (
+              <View className='flex-row'>
+                <Avatar alt=''>
+                  <AvatarFallback>
+                    <Text>
+                      {user.email?.charAt(0).toUpperCase() ?? "?"}
+                    </Text>
+                  </AvatarFallback>
+                </Avatar>
+                <View>
+                  <Text>{user.email}</Text>
+                  <Text>{user.online ? "Online" : "Offline"}</Text>
+                </View>
+              </View>
+            ))
+          }
           {/* All tasks */}
           <View className="w-full gap-4">
             {tasks?.map(task => (
