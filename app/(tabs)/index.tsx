@@ -13,6 +13,7 @@ import { MoonStarIcon, SunIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { ScrollView, View } from 'react-native';
+import { useGlobalPresence } from '@/hooks/use-presence';
 
 const SCREEN_OPTIONS = {
   title: 'Tasks',
@@ -23,7 +24,16 @@ const SCREEN_OPTIONS = {
 export default function HomeScreen() {
   const tasks = useQuery(api.tasks.getTasks);
   const allUsers = useQuery(api.users.getAllUsers);
+  const currentUser = useQuery(api.users.viewer);
 
+  // Only track presence if user is authenticated (currentUser exists)
+  const shouldTrackPresence = currentUser !== null && currentUser !== undefined;
+  const userName = currentUser?.name || currentUser?.email || "Anonymous User";
+  
+  // Set up presence tracking only if user is authenticated
+  const presenceUsers = useGlobalPresence(
+    shouldTrackPresence ? userName : ""
+  );
 
   const deleteTaskById = useMutation(api.tasks.deleteTaskById);
 
@@ -42,25 +52,43 @@ export default function HomeScreen() {
         <View className="items-center justify-center gap-8 p-4">
           <TaskForm />
 
-          {
-            allUsers?.map(user => (
-              <View className='flex-row'>
-                <Avatar alt=''>
-                  <AvatarFallback>
-                    <Text>
-                      {user.email?.charAt(0).toUpperCase() ?? "?"}
-                    </Text>
-                  </AvatarFallback>
-                </Avatar>
-                <View>
-                  <Text>{user.email}</Text>
-                  <Text>{user.online ? "Online" : "Offline"}</Text>
-                </View>
+          {/* All Users List with Presence Status */}
+          {allUsers && allUsers.length > 0 && (
+            <View className="w-full gap-2">
+              <Text variant="h2">All Users</Text>
+              <View className="gap-2">
+                {allUsers.map(user => {
+                  // Check if user is online by finding them in presenceUsers
+                  const isOnline = presenceUsers?.some(p => p.userId === user._id) ?? false;
+                  
+                  return (
+                    <View key={user._id} className='flex-row items-center gap-3 rounded-lg bg-card p-3'>
+                      <Avatar alt=''>
+                        <AvatarFallback>
+                          <Text>
+                            {user.email?.charAt(0).toUpperCase() ?? "?"}
+                          </Text>
+                        </AvatarFallback>
+                      </Avatar>
+                      <View className="flex-1">
+                        <Text>{user.name || user.email || "Anonymous"}</Text>
+                        <Text className={isOnline ? "text-green-500" : "text-gray-500"}>
+                          {isOnline ? "Online" : "Offline"}
+                        </Text>
+                      </View>
+                      {isOnline && (
+                        <View className="h-3 w-3 rounded-full bg-green-500" />
+                      )}
+                    </View>
+                  );
+                })}
               </View>
-            ))
-          }
+            </View>
+          )}
+
           {/* All tasks */}
           <View className="w-full gap-4">
+            <Text variant="h2">Tasks</Text>
             {tasks?.map(task => (
               <Card key={task._id}>
                 <CardContent>

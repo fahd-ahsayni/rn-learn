@@ -2,8 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { api } from '@/convex/_generated/api';
-import { useAuthActions } from '@convex-dev/auth/react';
-import { useAction, useQuery } from 'convex/react';
+import { useSignOutWithPresence } from '@/hooks/use-presence';
+import { useQuery } from 'convex/react';
 import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const isAuthenticated = useQuery(api.auth.isAuthenticated);
-  const { signOut } = useAuthActions();
+  const { signOut } = useSignOutWithPresence();
 
   const [loading, setLoading] = useState(false);
 
